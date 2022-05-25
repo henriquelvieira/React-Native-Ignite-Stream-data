@@ -4,6 +4,8 @@ import { Alert, FlatList, Modal, ActivityIndicator, View } from 'react-native';
 import Feather from 'react-native-vector-icons/Feather'
 
 import { TopGamesCard } from '../../components/TopGamesCard';
+import { UserFollowedStreamCard } from '../../components/UserFollowedStreamCard';
+
 import { useAuth } from '../../hooks/useAuth';
 import { api } from '../../services/api';
 
@@ -19,13 +21,12 @@ import {
   TopGames, 
   TopGamesTitle
 } from './styles';
-import { UserFollowedStreamCard } from '../../components/UserFollowedStreamCard';
 
 interface TopGames {
   box_art_url: string, 
   id: string, 
   name: string
-}
+};
 
 interface UserFollowedStreams {
   id: string;
@@ -35,11 +36,11 @@ interface UserFollowedStreams {
   user_login: string, 
   user_name: string,
   viewer_count: number
-}
+};
 
 interface UserFollowedStreamsFormatted extends UserFollowedStreams {
   user_avatar_url: string;
-}
+};
 
 export function Home() {
   const [topGames, setTopGames] = useState<TopGames[]>([]);
@@ -50,9 +51,13 @@ export function Home() {
   const theme = useTheme();
   const { signOut, user, isLoggingOut } = useAuth();
 
-  // creates a function to handle sign out
-    // try to call and wait signOut
-    // if fails, display an Alert with the title "Erro SignOut" and message "Ocorreu um erro ao tentar se deslogar do app"
+  async function handleSignOut() {
+    try {
+      await signOut(); 
+    } catch (error) {
+      Alert.alert('Erro SignOut', 'Ocorreu um erro ao tentar se deslogar do app');
+    };
+  };
 
   async function getTopGames() {
     try {
@@ -63,7 +68,7 @@ export function Home() {
     } catch (error) {
       Alert.alert('Erro Top Games', 'Ocorreu um erro ao buscar os jogos mais assistidos agora na Twitch');
     }
-  }
+  };
 
   async function getUserFollowedStreamsAvatar(userFollowedStreamsData: UserFollowedStreams[]) {
     return Promise.all(userFollowedStreamsData.map(async (item) => {
@@ -76,7 +81,7 @@ export function Home() {
         }
       })
     )
-  }
+  };
 
   async function getUserFollowedStreams() {
     try {
@@ -91,12 +96,12 @@ export function Home() {
     } catch (error) {
       Alert.alert('Erro User Followed Streams', 'Ocorreu um erro ao buscar as informações das streams ao vivo que o usuário segue');
     }
-  }
+  };
 
   useEffect(() => {
     getTopGames();
     getUserFollowedStreams();
-  }, [])
+  }, []);
 
   return (
     <Container
@@ -121,11 +126,12 @@ export function Home() {
           <UserInfoText style={{ fontFamily: theme.fonts.bold }}>{user.display_name}</UserInfoText>
         </UserInfo>
 
-        {/* <SignOutButton onPress={}>
-          Verify if isLoggingOut is true
-          If it is, show an ActivityIndicator
-          Otherwise, show Feather's power icon
-        </SignOutButton> */}
+        <SignOutButton onPress={handleSignOut}>
+          {isLoggingOut ? 
+            <ActivityIndicator size={25} color={theme.colors.white} /> :
+            <Feather name='power' size={24} color={theme.colors.white} /> 
+          }
+        </SignOutButton>
       </Header>
 
       <UserFollowedStreams>
