@@ -135,7 +135,9 @@ export function Home() {
       </Header>
 
       <UserFollowedStreams>
-        <UserFollowedStreamsTitle>Canais que você segue</UserFollowedStreamsTitle>
+        <UserFollowedStreamsTitle>
+          Canais que você segue
+        </UserFollowedStreamsTitle>
 
         <FlatList 
           data={!isLoadingUserFollowedStreams ? userFollowedStreams : [{ id: '1' } as UserFollowedStreamsFormatted, { id: '2' } as UserFollowedStreamsFormatted]}

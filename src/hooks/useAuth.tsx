@@ -1,6 +1,7 @@
 import { makeRedirectUri, revokeAsync, startAsync } from 'expo-auth-session';
 import React, { useEffect, createContext, useContext, useState, ReactNode } from 'react';
 import { generateRandom } from 'expo-auth-session/build/PKCE';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 
 
 import { api } from '../services/api';
@@ -10,6 +11,10 @@ interface User {
   display_name: string;
   email: string;
   profile_image_url: string;
+};
+
+interface UserWithToken extends User {
+  access_token: string;
 };
 
 interface AuthContextData {
@@ -46,7 +51,45 @@ function AuthProvider({ children }: AuthProviderData) {
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [user, setUser] = useState({} as User);
   const [userToken, setUserToken] = useState('');
-  
+
+
+  async function loadUserFromLocalStorage(){
+    const dataKey = '@stream.data:user';
+    const userLocalStorage = await AsyncStorage.getItem(dataKey);
+    
+    if (userLocalStorage) {
+      
+      const { 
+        id, 
+        display_name, 
+        email, 
+        profile_image_url,
+        access_token
+      } = JSON.parse(userLocalStorage) as UserWithToken; 
+      
+      setUser({
+        id, 
+        display_name, 
+        email, 
+        profile_image_url
+      });  
+
+      setUserToken(access_token);
+      api.defaults.headers.authorization = `Bearer ${access_token}`;
+    };
+
+  }; 
+
+  async function saveUserOnLocalStorage(user: UserWithToken){
+    const dataKey = '@stream.data:user';
+    await AsyncStorage.setItem(dataKey, JSON.stringify(user));
+  };
+
+  async function removeUserFromLocalStorage(){
+    const dataKey = '@stream.data:user';
+    await AsyncStorage.removeItem(dataKey);
+  };
+
   async function signIn() {
     try {
       setIsLoggingIn(true);
@@ -78,8 +121,8 @@ function AuthProvider({ children }: AuthProviderData) {
         api.defaults.headers.authorization = `Bearer ${authResponse.params.access_token}`;
 
         const userResponse = await api.get('/users'); //get profile's info
-
         const userResponseData = userResponse.data.data[0] as User;
+
         const userResponseFormatted = {
           id: userResponseData.id,
           display_name: userResponseData.display_name,
@@ -87,8 +130,14 @@ function AuthProvider({ children }: AuthProviderData) {
           profile_image_url: userResponseData.profile_image_url            
         };
 
-        setUser(userResponseFormatted);
         setUserToken(accessToken);  
+        setUser(userResponseFormatted);
+
+        await saveUserOnLocalStorage({
+          ...userResponseFormatted,
+          access_token: accessToken
+        });
+
       };
 
     } catch (error) {
@@ -117,27 +166,27 @@ function AuthProvider({ children }: AuthProviderData) {
     } finally {
       setUser({} as User)
       setUserToken('');
-
+      removeUserFromLocalStorage();      
       delete api.defaults.headers.authorization;
-      setIsLoggingOut(false); // set isLoggingOut to false
+      setIsLoggingOut(false);
     }
-  }
+  };
 
   useEffect(() => {
-    api.defaults.headers['Client-Id'] = CLIENT_ID; // add client_id to request's "Client-Id" header
-  }, [])
+    api.defaults.headers['Client-Id'] = CLIENT_ID;
+    loadUserFromLocalStorage();
+  }, []);
 
   return (
     <AuthContext.Provider value={{ user, isLoggingOut, isLoggingIn, signIn, signOut }}>
       { children }
     </AuthContext.Provider>
   )
-}
+};
 
 function useAuth() {
   const context = useContext(AuthContext);
-
   return context;
-}
+};
 
 export { AuthProvider, useAuth };
